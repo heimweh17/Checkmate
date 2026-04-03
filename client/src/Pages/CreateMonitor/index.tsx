@@ -765,6 +765,86 @@ const CreateMonitorPage = () => {
 				}
 			/>
 
+			{/* Escalation Rules */}
+			<ConfigBox
+				title="Escalated Notifications"
+				subtitle="Trigger additional alerts if an incident persists beyond specified durations"
+				rightContent={
+					<Controller
+						name="escalationRules"
+						control={control}
+						render={({ field }) => {
+							const rules = field.value || [];
+							return (
+								<Stack spacing={theme.spacing(LAYOUT.MD)}>
+									{rules.map((rule, ruleIndex) => (
+										<Stack key={ruleIndex} spacing={theme.spacing(LAYOUT.SM)}>
+											<Stack direction="row" spacing={theme.spacing(LAYOUT.SM)} alignItems="center">
+												<TextField
+													label="Minutes After Incident Start"
+													type="number"
+													inputProps={{ min: 1 }}
+													value={rule.minutesAfterStart}
+													onChange={(e) => {
+														const newRules = [...rules];
+														newRules[ruleIndex].minutesAfterStart = parseInt(e.target.value, 10);
+														field.onChange(newRules);
+													}}
+												/>
+												<IconButton
+													size="small"
+													onClick={() => {
+														field.onChange(rules.filter((_, i) => i !== ruleIndex));
+													}}
+													aria-label="Remove escalation rule"
+												>
+													<Trash2 size={16} />
+												</IconButton>
+											</Stack>
+											<Typography variant="subtitle2">Select notification channels:</Typography>
+											<Controller
+												name={`escalationRules.${ruleIndex}.notificationIds`}
+												control={control}
+												render={({ field: notificationField }) => {
+													const notificationOptions = (notifications ?? []).map((n) => ({
+														...n,
+														name: n.notificationName,
+													}));
+													const selectedNotifications = notificationOptions.filter((n) =>
+														(notificationField.value ?? []).includes(n.id)
+													);
+													return (
+														<Autocomplete
+															multiple
+															options={notificationOptions}
+															value={selectedNotifications}
+															getOptionLabel={(option) => option.name}
+															onChange={(_: unknown, newValue: typeof notificationOptions) => {
+																notificationField.onChange(newValue.map((n) => n.id));
+															}}
+															isOptionEqualToValue={(option, value) => option.id === value.id}
+														/>
+													);
+												}}
+											/>
+											{ruleIndex < rules.length - 1 && <Divider />}
+										</Stack>
+									))}
+									<Button
+										onClick={() => {
+											field.onChange([...rules, { minutesAfterStart: 5, notificationIds: [] }]);
+										}}
+										variant="outlined"
+									>
+										+ Add Escalation Rule
+									</Button>
+								</Stack>
+							);
+						}}
+					/>
+				}
+			/>
+
 			{(watchedType === "http" ||
 				watchedType === "grpc" ||
 				watchedType === "websocket") && (
