@@ -507,4 +507,3 @@ export class SuperSimpleQueueHelper implements ISuperSimpleQueueHelper {
 		}
 	};
 }
-

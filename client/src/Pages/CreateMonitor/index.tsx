@@ -767,8 +767,8 @@ const CreateMonitorPage = () => {
 
 			{/* Escalation Rules */}
 			<ConfigBox
-				title="Escalated Notifications"
-				subtitle="Trigger additional alerts if an incident persists beyond specified durations"
+				title={t("pages.createMonitor.form.escalation.title")}
+				subtitle={t("pages.createMonitor.form.escalation.description")}
 				rightContent={
 					<Controller
 						name="escalationRules"
@@ -778,16 +778,28 @@ const CreateMonitorPage = () => {
 							return (
 								<Stack spacing={theme.spacing(LAYOUT.MD)}>
 									{rules.map((rule, ruleIndex) => (
-										<Stack key={ruleIndex} spacing={theme.spacing(LAYOUT.SM)}>
-											<Stack direction="row" spacing={theme.spacing(LAYOUT.SM)} alignItems="center">
+										<Stack
+											key={ruleIndex}
+											spacing={theme.spacing(LAYOUT.SM)}
+										>
+											<Stack
+												direction="row"
+												spacing={theme.spacing(LAYOUT.SM)}
+												alignItems="center"
+											>
 												<TextField
-													fieldLabel="Minutes After Incident Start"
+													fieldLabel={t(
+														"pages.createMonitor.form.escalation.option.minutesAfterStart.label"
+													)}
 													type="number"
 													inputProps={{ min: 1 }}
 													value={rule.minutesAfterStart}
 													onChange={(e) => {
 														const newRules = [...rules];
-														newRules[ruleIndex].minutesAfterStart = parseInt(e.target.value, 10);
+														newRules[ruleIndex].minutesAfterStart = parseInt(
+															e.target.value,
+															10
+														);
 														field.onChange(newRules);
 													}}
 												/>
@@ -802,7 +814,11 @@ const CreateMonitorPage = () => {
 													<Trash2 size={16} />
 												</IconButton>
 											</Stack>
-											<Typography variant="subtitle2">Select notification channels:</Typography>
+											<Typography variant="subtitle2">
+												{t(
+													"pages.createMonitor.form.escalation.option.notificationChannels.label"
+												)}
+											</Typography>
 											{(() => {
 												const notificationOptions = (notifications ?? []).map((n) => ({
 													...n,
@@ -819,7 +835,10 @@ const CreateMonitorPage = () => {
 															options={notificationOptions}
 															value={selectedNotifications}
 															getOptionLabel={(option) => option.name}
-															onChange={(_: unknown, newValue: typeof notificationOptions) => {
+															onChange={(
+																_: unknown,
+																newValue: typeof notificationOptions
+															) => {
 																const newRules = [...rules];
 																newRules[ruleIndex] = {
 																	...newRules[ruleIndex],
@@ -827,7 +846,9 @@ const CreateMonitorPage = () => {
 																};
 																field.onChange(newRules);
 															}}
-															isOptionEqualToValue={(option, value) => option.id === value.id}
+															isOptionEqualToValue={(option, value) =>
+																option.id === value.id
+															}
 														/>
 														{selectedNotifications.length > 0 && (
 															<Stack
@@ -851,7 +872,9 @@ const CreateMonitorPage = () => {
 																				const newRules = [...rules];
 																				newRules[ruleIndex] = {
 																					...newRules[ruleIndex],
-																					notificationIds: (rule.notificationIds ?? []).filter(
+																					notificationIds: (
+																						rule.notificationIds ?? []
+																					).filter(
 																						(id: string) => id !== notification.id
 																					),
 																				};
@@ -861,7 +884,9 @@ const CreateMonitorPage = () => {
 																		>
 																			<Trash2 size={16} />
 																		</IconButton>
-																		{index < selectedNotifications.length - 1 && <Divider />}
+																		{index < selectedNotifications.length - 1 && (
+																			<Divider />
+																		)}
 																	</Stack>
 																))}
 															</Stack>
@@ -875,11 +900,14 @@ const CreateMonitorPage = () => {
 									<Button
 										type="button"
 										onClick={() => {
-											field.onChange([...rules, { minutesAfterStart: 5, notificationIds: [] }]);
+											field.onChange([
+												...rules,
+												{ minutesAfterStart: 5, notificationIds: [] },
+											]);
 										}}
 										variant="outlined"
 									>
-										+ Add Escalation Rule
+										{t("pages.createMonitor.form.escalation.option.addRule")}
 									</Button>
 								</Stack>
 							);
