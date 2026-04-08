@@ -111,7 +111,6 @@ export const editMonitorBodyValidation = z.object({
 	geoCheckEnabled: z.boolean().optional(),
 	geoCheckLocations: z.array(z.enum(GeoContinents)).optional(),
 	geoCheckInterval: z.number().min(300000).optional(),
-	notifications: z.array(z.string()).optional(),
 	escalationRules: z.array(z.object({
 		minutesAfterStart: z.number().min(1, "Minutes must be at least 1"),
 		notificationIds: z.array(z.string()).min(1, "At least one notification is required"),
@@ -169,7 +168,6 @@ const importedMonitorSchema = z.object({
 	geoCheckEnabled: z.boolean().default(false),
 	geoCheckLocations: z.array(z.enum(GeoContinents)).default([]),
 	geoCheckInterval: z.number().min(300000).default(300000),
-	notifications: z.array(z.string()).default([]),
 	escalationRules: z.array(z.object({
 		minutesAfterStart: z.number().min(1),
 		notificationIds: z.array(z.string()).min(1),

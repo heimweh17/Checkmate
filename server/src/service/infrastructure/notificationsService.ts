@@ -6,6 +6,7 @@ import type { MonitorActionDecision } from "@/service/infrastructure/SuperSimple
 import type { ISettingsService } from "@/service/system/settingsService.js";
 import { ILogger } from "@/utils/logger.js";
 import type { INotificationMessageBuilder } from "@/service/infrastructure/notificationMessageBuilder.js";
+import type { EscalationRule } from "@/types/monitor.js";
 
 export interface INotificationsService {
 	createNotification: (notificationData: Partial<Notification>, userId: string, teamId: string) => Promise<Notification>;
@@ -14,7 +15,7 @@ export interface INotificationsService {
 	updateById(id: string, teamId: string, updateData: Partial<Notification>): Promise<Notification>;
 	deleteById: (id: string, teamId: string) => Promise<Notification>;
 	handleNotifications: (monitor: Monitor, monitorStatusResponse: MonitorStatusResponse, decision: MonitorActionDecision) => Promise<boolean>;
-	handleEscalationNotification: (monitor: Monitor, check: any, escalationRule: any) => Promise<void>;
+	handleEscalationNotification: (monitor: Monitor, escalationRule: EscalationRule) => Promise<void>;
 
 	sendTestNotification: (notification: Partial<Notification>) => Promise<boolean>;
 	testAllNotifications: (notificationIds: string[]) => Promise<boolean>;
@@ -199,27 +200,53 @@ export class NotificationsService implements INotificationsService {
 		return deleted;
 	};
 
-	handleEscalationNotification = async (monitor: Monitor, check: any, escalationRule: any): Promise<void> => {
-		// Build a message for escalation notification
+	handleEscalationNotification = async (monitor: Monitor, escalationRule: EscalationRule): Promise<void> => {
 		const settings = this.settingsService.getSettings();
 		const clientHost = settings.clientHost || "Host not defined";
-		
-		// Get the notification documents for this escalation rule
 		const notificationIds = escalationRule.notificationIds || [];
 		const notifications = await this.notificationsRepository.findNotificationsByIds(notificationIds);
+		const escalationMessage: NotificationMessage = {
+			type: "monitor_down",
+			severity: "critical",
+			monitor: {
+				id: monitor.id,
+				name: monitor.name,
+				url: monitor.url,
+				type: monitor.type,
+				status: monitor.status,
+			},
+			content: {
+				title: `[ESCALATION] ${monitor.name}`,
+				summary: `Monitor "${monitor.name}" has remained down for ${escalationRule.minutesAfterStart} minute(s).`,
+				details: [
+					`Escalation threshold: ${escalationRule.minutesAfterStart} minute(s)`,
+					`Monitor URL: ${monitor.url}`,
+					`Monitor type: ${monitor.type}`,
+				],
+				timestamp: new Date(),
+			},
+			clientHost,
+			metadata: {
+				teamId: monitor.teamId,
+				notificationReason: "escalation",
+			},
+		};
 
-		// Send to each notification channel
 		for (const notification of notifications) {
 			try {
-				const message = {
-					title: `[ESCALATION] ${monitor.name} - Incident ongoing for ${escalationRule.minutesAfterStart} minutes`,
-					body: `Monitor "${monitor.name}" has been down for ${escalationRule.minutesAfterStart} minutes and remains unresolved.`,
-					url: `${clientHost}/dashboard/monitors/${monitor.id}`,
-					status: "down",
-					statusCode: 0,
-				};
-
-				await this.send(notification, monitor, message);
+				await this.send(
+					notification,
+					monitor,
+					{} as MonitorStatusResponse,
+					{
+						shouldCreateIncident: false,
+						shouldResolveIncident: false,
+						shouldSendNotification: true,
+						incidentReason: null,
+						notificationReason: "status_change",
+					},
+					escalationMessage
+				);
 			} catch (error) {
 				this.logger.error({
 					message: `Error sending escalation notification: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -228,32 +255,6 @@ export class NotificationsService implements INotificationsService {
 					stack: error instanceof Error ? error.stack : undefined,
 				});
 			}
-		}
-	};
-
-	private send = async (notification: Notification, monitor: Monitor, message: any): Promise<boolean> => {
-		switch (notification.type) {
-			case "webhook":
-				return await this.webhookProvider.sendMessage!(notification, message);
-			case "slack":
-				return await this.slackProvider.sendMessage!(notification, message);
-			case "matrix":
-				return await this.matrixProvider.sendMessage!(notification, message);
-			case "pager_duty":
-				return await this.pagerDutyProvider.sendMessage!(notification, message);
-			case "discord":
-				return await this.discordProvider.sendMessage!(notification, message);
-			case "email":
-				return await this.emailProvider.sendMessage!(notification, message);
-			case "teams":
-				return await this.teamsProvider.sendMessage!(notification, message);
-			default:
-				this.logger.warn({
-					message: `Unknown notification type: ${notification.type}`,
-					service: SERVICE_NAME,
-					method: "send",
-				});
-				return false;
 		}
 	};
 }

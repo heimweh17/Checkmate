@@ -468,15 +468,13 @@ export class SuperSimpleQueueHelper implements ISuperSimpleQueueHelper {
 		return decision;
 	}
 
-	private handleEscalationNotifications = async (monitor: Monitor, check: any): Promise<void> => {
-		// Get the active incident for this monitor
-		const activeIncidents = await this.incidentsRepository.getByMonitorId(monitor.id, true);
-		if (!activeIncidents || activeIncidents.length === 0) {
+	private handleEscalationNotifications = async (monitor: Monitor, _check: unknown): Promise<void> => {
+		const activeIncident = await this.incidentsRepository.findActiveByMonitorId(monitor.id, monitor.teamId);
+		if (!activeIncident) {
 			return; // No active incident, nothing to escalate
 		}
 
-		const incident = activeIncidents[0];
-		const incidentDurationMinutes = Math.floor((Date.now() - new Date(incident.startTime).getTime()) / (1000 * 60));
+		const incidentDurationMinutes = Math.floor((Date.now() - new Date(activeIncident.startTime).getTime()) / (1000 * 60));
 
 		// Check if there are escalation rules
 		const escalationRules = monitor.escalationRules || [];
@@ -486,19 +484,20 @@ export class SuperSimpleQueueHelper implements ISuperSimpleQueueHelper {
 
 		// Get the most recent check for this monitor to know which escalations have fired
 		const recentChecks = await this.checksRepository.getByMonitorId(monitor.id, 1);
-		const firedThresholds = recentChecks && recentChecks.length > 0 ? recentChecks[0].firedEscalationThresholds || [] : [];
+		const latestCheck = recentChecks.at(0);
+		const firedThresholds = latestCheck?.firedEscalationThresholds ?? [];
 
 		// Evaluate each escalation rule
 		for (const rule of escalationRules) {
 			// Skip if this threshold has already fired
-			if (firedThresholds.includes(rule.minutesAfterStart)) {
+			if (rule && firedThresholds.includes(rule.minutesAfterStart)) {
 				continue;
 			}
 
 			// Check if incident duration exceeds the threshold
-			if (incidentDurationMinutes >= rule.minutesAfterStart) {
+			if (rule && incidentDurationMinutes >= rule.minutesAfterStart) {
 				// Send escalation notifications
-				await this.notificationsService.handleEscalationNotification(monitor, check, rule);
+				await this.notificationsService.handleEscalationNotification(monitor, rule);
 
 				// Mark this threshold as fired
 				firedThresholds.push(rule.minutesAfterStart);

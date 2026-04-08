@@ -781,7 +781,7 @@ const CreateMonitorPage = () => {
 										<Stack key={ruleIndex} spacing={theme.spacing(LAYOUT.SM)}>
 											<Stack direction="row" spacing={theme.spacing(LAYOUT.SM)} alignItems="center">
 												<TextField
-													label="Minutes After Incident Start"
+													fieldLabel="Minutes After Incident Start"
 													type="number"
 													inputProps={{ min: 1 }}
 													value={rule.minutesAfterStart}
@@ -793,6 +793,7 @@ const CreateMonitorPage = () => {
 												/>
 												<IconButton
 													size="small"
+													type="button"
 													onClick={() => {
 														field.onChange(rules.filter((_, i) => i !== ruleIndex));
 													}}
@@ -802,35 +803,77 @@ const CreateMonitorPage = () => {
 												</IconButton>
 											</Stack>
 											<Typography variant="subtitle2">Select notification channels:</Typography>
-											<Controller
-												name={`escalationRules.${ruleIndex}.notificationIds`}
-												control={control}
-												render={({ field: notificationField }) => {
-													const notificationOptions = (notifications ?? []).map((n) => ({
-														...n,
-														name: n.notificationName,
-													}));
-													const selectedNotifications = notificationOptions.filter((n) =>
-														(notificationField.value ?? []).includes(n.id)
-													);
-													return (
+											{(() => {
+												const notificationOptions = (notifications ?? []).map((n) => ({
+													...n,
+													name: n.notificationName,
+												}));
+												const selectedNotifications = notificationOptions.filter((n) =>
+													(rule.notificationIds ?? []).includes(n.id)
+												);
+
+												return (
+													<Stack spacing={theme.spacing(LAYOUT.MD)}>
 														<Autocomplete
 															multiple
 															options={notificationOptions}
 															value={selectedNotifications}
 															getOptionLabel={(option) => option.name}
 															onChange={(_: unknown, newValue: typeof notificationOptions) => {
-																notificationField.onChange(newValue.map((n) => n.id));
+																const newRules = [...rules];
+																newRules[ruleIndex] = {
+																	...newRules[ruleIndex],
+																	notificationIds: newValue.map((n) => n.id),
+																};
+																field.onChange(newRules);
 															}}
 															isOptionEqualToValue={(option, value) => option.id === value.id}
 														/>
-													);
-												}}
-											/>
+														{selectedNotifications.length > 0 && (
+															<Stack
+																flex={1}
+																width="100%"
+															>
+																{selectedNotifications.map((notification, index) => (
+																	<Stack
+																		direction="row"
+																		alignItems="center"
+																		key={notification.id}
+																		width="100%"
+																	>
+																		<Typography flexGrow={1}>
+																			{notification.notificationName}
+																		</Typography>
+																		<IconButton
+																			size="small"
+																			type="button"
+																			onClick={() => {
+																				const newRules = [...rules];
+																				newRules[ruleIndex] = {
+																					...newRules[ruleIndex],
+																					notificationIds: (rule.notificationIds ?? []).filter(
+																						(id: string) => id !== notification.id
+																					),
+																				};
+																				field.onChange(newRules);
+																			}}
+																			aria-label="Remove escalation notification"
+																		>
+																			<Trash2 size={16} />
+																		</IconButton>
+																		{index < selectedNotifications.length - 1 && <Divider />}
+																	</Stack>
+																))}
+															</Stack>
+														)}
+													</Stack>
+												);
+											})()}
 											{ruleIndex < rules.length - 1 && <Divider />}
 										</Stack>
 									))}
 									<Button
+										type="button"
 										onClick={() => {
 											field.onChange([...rules, { minutesAfterStart: 5, notificationIds: [] }]);
 										}}
